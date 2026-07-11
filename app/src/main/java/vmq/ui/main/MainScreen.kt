@@ -28,15 +28,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import com.vone.qrcode.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vone.qrcode.R
 
 @Composable
 fun MainRoute(
     viewModel: MainViewModel,
+    appVersion: String,
     onScanQrCode: () -> Unit,
     onManualInput: () -> Unit,
     onCheckHeartbeat: () -> Unit,
@@ -46,6 +47,7 @@ fun MainRoute(
 
     MainScreen(
         uiState = uiState,
+        appVersion = appVersion,
         onScanQrCode = onScanQrCode,
         onManualInput = onManualInput,
         onCheckHeartbeat = onCheckHeartbeat,
@@ -56,6 +58,7 @@ fun MainRoute(
 @Composable
 fun MainScreen(
     uiState: MainUiState,
+    appVersion: String,
     onScanQrCode: () -> Unit,
     onManualInput: () -> Unit,
     onCheckHeartbeat: () -> Unit,
@@ -87,7 +90,7 @@ fun MainScreen(
                 onCheckPush = onCheckPush,
             )
 
-            FooterText()
+            FooterText(appVersion = appVersion)
         }
     }
 }
@@ -255,16 +258,30 @@ private fun QuickActionsSection(
 }
 
 @Composable
-private fun FooterText() {
-    Text(
-        text = stringResource(R.string.main_footer_hint),
-        fontSize = 12.sp,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+private fun FooterText(appVersion: String) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 18.dp),
-        textAlign = TextAlign.Center,
-    )
+    ) {
+        Text(
+            text = stringResource(R.string.main_footer_hint),
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = stringResource(R.string.main_footer_version, appVersion),
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp)
+                .testTag("app_version_text"),
+            textAlign = TextAlign.Center,
+        )
+    }
 }
 
 @Composable

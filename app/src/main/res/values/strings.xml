@@ -46,6 +46,7 @@
     <string name="main_action_push_title">检测监听</string>
     <string name="main_action_push_subtitle">发送测试通知</string>
     <string name="main_footer_hint">需要将应用加入后台保护和电池优化白名单</string>
+    <string name="main_footer_version">版本 %1$s</string>
 
     <!-- Foreground Service -->
     <string name="foreground_channel_name">运行状态</string>

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BUILD_FILE="${BUILD_FILE:-app/build.gradle}"
+VERSION_FILE="${VERSION_FILE:-version.properties}"
 GRADLE="${GRADLE:-./gradlew}"
 DRY_RUN=0
 SKIP_TESTS=0
@@ -32,9 +32,9 @@ run_command() {
     "$@"
 }
 
-require_build_file() {
-    if [[ ! -f "$BUILD_FILE" ]]; then
-        printf 'Build file not found: %s\n' "$BUILD_FILE" >&2
+require_version_file() {
+    if [[ ! -f "$VERSION_FILE" ]]; then
+        printf 'Version file not found: %s\n' "$VERSION_FILE" >&2
         exit 1
     fi
 }
@@ -57,11 +57,11 @@ version_code_for() {
 }
 
 current_version_name() {
-    grep -Eo 'versionName "[^"]+"' "$BUILD_FILE" | head -n1 | sed -E 's/versionName "([^"]+)"/\1/'
+    grep -E '^VERSION_NAME=' "$VERSION_FILE" | head -n1 | cut -d'=' -f2-
 }
 
 current_version_code() {
-    grep -Eo 'versionCode [0-9]+' "$BUILD_FILE" | head -n1 | awk '{print $2}'
+    grep -E '^VERSION_CODE=' "$VERSION_FILE" | head -n1 | cut -d'=' -f2-
 }
 
 update_versions() {
@@ -69,13 +69,13 @@ update_versions() {
     local version_code="$2"
 
     if [[ "$DRY_RUN" == "1" ]]; then
-        printf 'Would update %s\n' "$BUILD_FILE"
+        printf 'Would update %s\n' "$VERSION_FILE"
         printf '  versionName: %s -> %s\n' "$(current_version_name)" "$version"
         printf '  versionCode: %s -> %s\n' "$(current_version_code)" "$version_code"
         return 0
     fi
 
-    perl -0pi -e "s/versionCode\\s+\\d+/versionCode ${version_code}/; s/versionName\\s+\"[^\"]+\"/versionName \"${version}\"/;" "$BUILD_FILE"
+    printf 'VERSION_NAME=%s\nVERSION_CODE=%s\n' "$version" "$version_code" > "$VERSION_FILE"
 }
 
 run_release() {
@@ -98,7 +98,7 @@ create_git_tag() {
 }
 
 main() {
-    require_build_file
+    require_version_file
 
     local command="${1:-}"
     if [[ -z "$command" ]]; then

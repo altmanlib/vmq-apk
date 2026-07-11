@@ -79,6 +79,7 @@ class MainActivity : ComponentActivity() {
             VmqTheme {
                 MainRoute(
                     viewModel = viewModel,
+                    appVersion = appVersionName(),
                     onScanQrCode = { startCameraScan() },
                     onManualInput = { showManualInputDialog() },
                     onCheckHeartbeat = { viewModel.startHeartbeat() },

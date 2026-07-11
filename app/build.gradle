@@ -11,6 +11,13 @@ if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
 }
 
+final def versionPropertiesFile = rootProject.file('version.properties')
+final def versionProperties = new Properties()
+if (!versionPropertiesFile.exists()) {
+    throw new GradleException("Missing version.properties")
+}
+versionPropertiesFile.withInputStream { versionProperties.load(it) }
+
 android {
     namespace 'com.vone.qrcode'
     compileSdk 34
@@ -19,8 +26,8 @@ android {
         applicationId "com.vone.qrcode"
         minSdk 21
         targetSdk 34
-        versionCode 2001001
-        versionName "2.1.1"
+        versionCode Integer.parseInt(versionProperties['VERSION_CODE'])
+        versionName versionProperties['VERSION_NAME']
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {

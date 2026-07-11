@@ -2,11 +2,11 @@ package vmq.ui.main
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
-import com.vone.qrcode.R
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.vone.qrcode.R
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -31,6 +31,7 @@ class MainScreenTest {
                         config = AppConfig(host = "https://vmq.example.com", key = "secret"),
                         isConfigured = true,
                     ),
+                    appVersion = "2.2.0",
                     onScanQrCode = { scanClicks++ },
                     onManualInput = { manualClicks++ },
                     onCheckHeartbeat = { heartbeatClicks++ },
@@ -44,6 +45,9 @@ class MainScreenTest {
         ).assertIsDisplayed()
         composeTestRule.onNodeWithText("https://vmq.example.com").assertIsDisplayed()
         composeTestRule.onNodeWithText("secret").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.main_footer_version, "2.2.0"),
+        ).assertIsDisplayed()
 
         composeTestRule.onNodeWithTag("scan_config_action").performClick()
         composeTestRule.onNodeWithTag("manual_config_action").performClick()
