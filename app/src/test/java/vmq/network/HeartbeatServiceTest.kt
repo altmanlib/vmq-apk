@@ -32,8 +32,8 @@ class HeartbeatServiceTest {
 
             assertTrue(result.isSuccess)
             assertEquals("OK", result.getOrNull())
-            assertEquals("/api/appHeart?t=$timestamp&sign=$sign", request.path)
-            assertEquals("GET", request.method)
+            assertEquals("/api/api/v1/system/heartbeat?t=$timestamp&sign=$sign", request.path)
+            assertEquals("POST", request.method)
         } finally {
             server.shutdown()
         }

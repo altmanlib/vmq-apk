@@ -38,10 +38,10 @@ class PaymentPushServiceTest {
             assertTrue(result.isSuccess)
             assertEquals("PUSH_OK", result.getOrNull())
             assertEquals(
-                "/api/appPush?t=$timestamp&type=${paymentEvent.type.code}&price=${paymentEvent.amount}&sign=$sign",
+                "/api/api/v1/payments/notify?t=$timestamp&type=${paymentEvent.type.code}&price=${paymentEvent.amount}&sign=$sign",
                 request.path,
             )
-            assertEquals("GET", request.method)
+            assertEquals("POST", request.method)
         } finally {
             server.shutdown()
         }

@@ -2,11 +2,11 @@ package vmq.network
 
 object ApiUrlBuilder {
     fun buildHeartBeatUrl(hostValue: String, timestamp: String, sign: String): String {
-        return build(hostValue, "appHeart?t=$timestamp&sign=$sign")
+        return build(hostValue, "api/v1/system/heartbeat?t=$timestamp&sign=$sign")
     }
 
     fun buildAppPushUrl(hostValue: String, timestamp: String, type: Int, price: Double, sign: String): String {
-        return build(hostValue, "appPush?t=$timestamp&type=$type&price=$price&sign=$sign")
+        return build(hostValue, "api/v1/payments/notify?t=$timestamp&type=$type&price=$price&sign=$sign")
     }
 
     fun build(hostValue: String, pathAndQuery: String): String {

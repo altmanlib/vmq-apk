@@ -26,7 +26,7 @@ class PaymentPushService(
                         sign = sign,
                     ),
                 )
-                .get()
+                .post(okhttp3.FormBody.Builder().build())
                 .build()
 
             okHttpClient.newCall(request).execute().use { response ->

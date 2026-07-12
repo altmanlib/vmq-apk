@@ -16,7 +16,7 @@ class HeartbeatService(
             val sign = HashUtils.md5(timestamp + config.key)
             val request = Request.Builder()
                 .url(ApiUrlBuilder.buildHeartBeatUrl(config.host, timestamp, sign))
-                .get()
+                .post(okhttp3.FormBody.Builder().build())
                 .build()
 
             okHttpClient.newCall(request).execute().use { response ->
