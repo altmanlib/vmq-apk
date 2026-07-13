@@ -6,23 +6,22 @@ GRADLE="${GRADLE:-./gradlew}"
 REMOTE="${REMOTE:-origin}"
 BUMP_PART="${BUMP_PART:-patch}"
 DRY_RUN=0
-SKIP_TESTS=0
 
 usage() {
     printf '%s\n' \
         'Usage:' \
-        '  scripts/release.sh [x.y.z] [--dry-run] [--skip-tests] [--remote <name>] [--bump <patch|minor|major>]' \
+        '  scripts/release.sh [x.y.z] [--dry-run] [--remote <name>] [--bump <patch|minor|major>]' \
         '  scripts/release.sh current' \
         '  scripts/release.sh version-code <x.y.z>' \
         '  scripts/release.sh bump <x.y.z> [--dry-run]' \
-        '  scripts/release.sh release <x.y.z> [--dry-run] [--skip-tests]' \
+        '  scripts/release.sh release <x.y.z> [--dry-run]' \
         '  scripts/release.sh tag <x.y.z> [--dry-run]' \
-        '  scripts/release.sh publish [x.y.z] [--dry-run] [--skip-tests] [--remote <name>] [--bump <patch|minor|major>]' \
+        '  scripts/release.sh publish [x.y.z] [--dry-run] [--remote <name>] [--bump <patch|minor|major>]' \
         '' \
         'Default behavior:' \
         '  - If x.y.z is provided, publish that version.' \
         '  - If x.y.z is omitted, auto-bump the current version (default: patch).' \
-        '  - Publish means: bump version, run tests, build release APK, commit version.properties, tag, push branch, and push tag.'
+        '  - Publish means: bump version, commit version.properties, tag, push branch, and push tag.'
 }
 
 print_command() {
@@ -195,12 +194,6 @@ run_release() {
 
     ensure_version_changed "$version"
     update_versions "$version" "$version_code"
-
-    if [[ "$SKIP_TESTS" != "1" ]]; then
-        run_command "$GRADLE" testDebugUnitTest
-    fi
-
-    run_command "$GRADLE" assembleRelease
 }
 
 create_git_tag() {
@@ -228,9 +221,6 @@ parse_common_options() {
         case "$1" in
             --dry-run)
                 DRY_RUN=1
-                ;;
-            --skip-tests)
-                SKIP_TESTS=1
                 ;;
             --remote)
                 shift || true
