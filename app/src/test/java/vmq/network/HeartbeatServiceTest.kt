@@ -18,12 +18,13 @@ class HeartbeatServiceTest {
         server.start()
 
         try {
-            val timestamp = 123456789L
+            val timestampMillis = 1_784_194_689_610L
+            val timestamp = timestampMillis / 1_000
             val host = server.url("/api").toString().removeSuffix("/")
             val config = AppConfig(host = host, key = "secret")
             val service = HeartbeatService(
                 okHttpClient = OkHttpClient(),
-                currentTimeMillis = { timestamp },
+                currentTimeMillis = { timestampMillis },
             )
 
             val result = service.sendHeartbeat(config)

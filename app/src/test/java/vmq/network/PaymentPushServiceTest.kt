@@ -20,7 +20,8 @@ class PaymentPushServiceTest {
         server.start()
 
         try {
-            val timestamp = 123456789L
+            val timestampMillis = 1_784_194_689_610L
+            val timestamp = timestampMillis / 1_000
             val config = AppConfig(
                 host = server.url("/api").toString().removeSuffix("/"),
                 key = "secret",
@@ -28,7 +29,7 @@ class PaymentPushServiceTest {
             val paymentEvent = PaymentEvent(PaymentType.ALIPAY, 12.34)
             val service = PaymentPushService(
                 okHttpClient = OkHttpClient(),
-                currentTimeMillis = { timestamp },
+                currentTimeMillis = { timestampMillis },
             )
 
             val result = service.sendPayment(config, paymentEvent)
