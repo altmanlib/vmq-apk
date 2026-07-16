@@ -4,6 +4,7 @@ import vmq.data.AppConfig
 import vmq.model.PaymentEvent
 import vmq.model.PaymentType
 import vmq.util.HashUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -29,6 +30,7 @@ class PaymentPushServiceTest {
             val paymentEvent = PaymentEvent(PaymentType.ALIPAY, 12.34)
             val service = PaymentPushService(
                 okHttpClient = OkHttpClient(),
+                dispatcher = Dispatchers.Unconfined,
                 currentTimeMillis = { timestampMillis },
             )
 
@@ -52,14 +54,16 @@ class PaymentPushServiceTest {
     }
 
     @Test
-    fun `sendPayment returns failure for non successful http status`() = runTest {
+    fun `sendPayment retries on 500 and succeeds on second attempt`() = runTest {
         val server = MockWebServer()
         server.enqueue(MockResponse().setResponseCode(500).setBody("ERROR"))
+        server.enqueue(MockResponse().setBody("PUSH_OK"))
         server.start()
 
         try {
             val service = PaymentPushService(
                 okHttpClient = OkHttpClient(),
+                dispatcher = Dispatchers.Unconfined,
                 currentTimeMillis = { 123456789L },
             )
 
@@ -68,7 +72,57 @@ class PaymentPushServiceTest {
                 paymentEvent = PaymentEvent(PaymentType.WECHAT, 8.88),
             )
 
+            assertTrue(result.isSuccess)
+            assertEquals("PUSH_OK", result.getOrNull())
+            assertEquals(2, server.requestCount)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `sendPayment does not retry on 400`() = runTest {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setResponseCode(400).setBody("INVALID"))
+        server.start()
+
+        try {
+            val service = PaymentPushService(
+                okHttpClient = OkHttpClient(),
+                dispatcher = Dispatchers.Unconfined,
+            )
+
+            val result = service.sendPayment(
+                config = AppConfig(host = server.url("/").toString().removeSuffix("/"), key = "secret"),
+                paymentEvent = PaymentEvent(PaymentType.WECHAT, 8.88),
+            )
+
             assertTrue(result.isFailure)
+            assertEquals(1, server.requestCount)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `sendPayment exhausts retries on persistent 500`() = runTest {
+        val server = MockWebServer()
+        repeat(4) { server.enqueue(MockResponse().setResponseCode(500)) }
+        server.start()
+
+        try {
+            val service = PaymentPushService(
+                okHttpClient = OkHttpClient(),
+                dispatcher = Dispatchers.Unconfined,
+            )
+
+            val result = service.sendPayment(
+                config = AppConfig(host = server.url("/").toString().removeSuffix("/"), key = "secret"),
+                paymentEvent = PaymentEvent(PaymentType.WECHAT, 8.88),
+            )
+
+            assertTrue(result.isFailure)
+            assertEquals(4, server.requestCount)
         } finally {
             server.shutdown()
         }
