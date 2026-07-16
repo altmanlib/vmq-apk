@@ -33,8 +33,8 @@ class NeNotificationService : NotificationListenerService() {
         val notification: Notification = sbn.notification ?: return
         val extras: Bundle = notification.extras ?: return
         val packageName = sbn.packageName
-        val title = extras.getString(NotificationCompat.EXTRA_TITLE, "")
-        val content = extras.getString(NotificationCompat.EXTRA_TEXT, "")
+        val title = NotificationTextExtractor.extract(extras.getCharSequence(NotificationCompat.EXTRA_TITLE))
+        val content = NotificationTextExtractor.extract(extras.getCharSequence(NotificationCompat.EXTRA_TEXT))
 
         Log.d(TAG, "**********************")
         Log.d(TAG, "Package:$packageName")
