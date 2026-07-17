@@ -26,7 +26,7 @@ object PaymentNotificationParser {
             return null
         }
 
-        val amount = extractAmount(notificationText) ?: return null
+        val amount = extractAlipayAmount(title, content) ?: return null
         return PaymentEvent(PaymentType.ALIPAY, amount)
     }
 
@@ -39,6 +39,18 @@ object PaymentNotificationParser {
         return PaymentEvent(PaymentType.WECHAT, amount)
     }
 
+    private fun extractAlipayAmount(title: String?, content: String?): Double? {
+        return listOfNotNull(title, content)
+            .asSequence()
+            .mapNotNull { notificationText ->
+                alipayCollectionAmountPattern.find(notificationText)
+                    ?.groupValues
+                    ?.get(1)
+                    ?.toDoubleOrNull()
+            }
+            .firstOrNull()
+    }
+
     private fun extractAmount(content: String): Double? {
         val lastNumber = content
             .replace(Regex("[^0-9.]"), ",")
@@ -48,4 +60,8 @@ object PaymentNotificationParser {
 
         return lastNumber?.toDoubleOrNull()
     }
+
+    private val alipayCollectionAmountPattern = Regex(
+        "(?:通过扫码向你付款|成功收款)\\s*(?:¥|￥)?\\s*([0-9]+(?:\\.[0-9]+)?)\\s*元?",
+    )
 }
