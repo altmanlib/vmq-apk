@@ -231,6 +231,23 @@ fun `example`() = runTest {
 - 非必要不要测试 UI 框架实现细节，优先测试业务行为与状态。
 - 对外部依赖（网络、系统服务、通知、扫码结果等），必须通过抽象和替身隔离，不要在单元测试中访问真实环境。
 
+## 通知误报排查
+
+出现支付宝或微信收款通知误报时，在用户已连接并授权调试设备的前提下，优先使用 ADB 获取真实通知文本，再调整解析规则。通知内容可能包含隐私信息，仅用于当前问题排查，避免在日志、提交信息或回复中泄露无关内容。
+
+```bash
+adb devices -l
+adb shell dumpsys notification --noredact | rg -n -i -C 6 'com\\.eg\\.android\\.AlipayGphone|com\\.tencent\\.mm|支付宝|微信'
+adb logcat -d -v brief -s NeNotificationService:D '*:S'
+```
+
+排查步骤：
+
+1. 从 `dumpsys notification --noredact` 记录通知的包名、`android.title` 和 `android.text`；当前活跃通知通常可完整读取，已清除的通知不保证可获取。
+2. 对照 `NeNotificationService` 日志，确认监听服务是否收到该通知，以及实际解析和回调的金额。
+3. 将已脱敏的真实标题与正文作为单元测试用例，先复现误报，再修复解析逻辑。
+4. 金额必须由收款语义锚定提取，不能从拼接后的完整通知文本中取最后一个数字；营销额度、保障金额、积分等数字不得影响收款金额。
+
 ## App 使用流程
 
 1. 安装并启动 App
