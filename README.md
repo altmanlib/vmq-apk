@@ -1,6 +1,6 @@
-# vmq-apk
+# cloudpay-apk
 
-`vmq-apk` 是一个用于**自用收款通知监听**的 Android App。
+`cloudpay-apk` 是一个用于**自用收款通知监听**的 Android App。
 
 通过 `NotificationListenerService` 监听微信 / 支付宝收款通知，并将结果回调到你的自建服务端。
 
