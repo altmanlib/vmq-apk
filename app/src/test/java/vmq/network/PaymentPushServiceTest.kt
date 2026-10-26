@@ -38,19 +38,18 @@ class PaymentPushServiceTest {
 
             val result = service.sendPayment(config, paymentEvent)
             val request = server.takeRequest()
-            val channel = paymentEvent.type.code
-            val body = "{\"channel\":$channel,\"price\":${paymentEvent.amount}}"
+            val body = "{\"channel\":\"alipay\",\"amount\":\"12.34\"}"
 
             assertTrue(result.isSuccess)
             assertEquals("PUSH_OK", result.getOrNull())
-            assertEquals("/api/api/v1/payments/notify", request.path)
+            assertEquals("/api/api/monitor/payments", request.path)
             assertEquals(body, request.body.readUtf8())
             assertEquals("$timestamp", request.getHeader(RequestSignature.TIMESTAMP_HEADER))
             assertEquals("123e4567-e89b-42d3-a456-426614174000", request.getHeader(RequestSignature.NONCE_HEADER))
             assertEquals(
                 RequestSignature.sign(
                     method = "POST",
-                    path = "/api/api/v1/payments/notify",
+                    path = "/api/api/monitor/payments",
                     timestamp = timestamp.toString(),
                     nonce = "123e4567-e89b-42d3-a456-426614174000",
                     body = body.toByteArray(Charsets.UTF_8),
@@ -60,6 +59,28 @@ class PaymentPushServiceTest {
             )
             assertEquals("application/json; charset=utf-8", request.getHeader("Content-Type"))
             assertEquals("POST", request.method)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `sendPayment encodes amount as a two decimal yuan string`() = runTest {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("PUSH_OK"))
+        server.start()
+
+        try {
+            val config = AppConfig(host = server.url("/").toString().removeSuffix("/"), key = "secret")
+            val service = PaymentPushService(
+                okHttpClient = OkHttpClient(),
+                dispatcher = StandardTestDispatcher(testScheduler),
+            )
+
+            service.sendPayment(config, PaymentEvent(PaymentType.WECHAT, 8.8))
+            val body = server.takeRequest().body.readUtf8()
+
+            assertEquals("{\"channel\":\"wechat\",\"amount\":\"8.80\"}", body)
         } finally {
             server.shutdown()
         }

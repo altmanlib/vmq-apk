@@ -1,16 +1,21 @@
 package vmq.network
 
 import java.util.UUID
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import vmq.util.HashUtils
 
 object RequestSignature {
-    const val TIMESTAMP_HEADER = "X-VMQ-Timestamp"
-    const val NONCE_HEADER = "X-VMQ-Nonce"
-    const val SIGNATURE_HEADER = "X-VMQ-Signature"
-    const val VERSION = "VMQ-HMAC-SHA256-V1"
-    const val PREFIX = "v1="
+    const val TIMESTAMP_HEADER = "X-CloudPay-Timestamp"
+    const val NONCE_HEADER = "X-CloudPay-Nonce"
+    const val SIGNATURE_HEADER = "X-CloudPay-Signature"
 
     fun newNonce(): String = UUID.randomUUID().toString()
+
+    // Pathname plus query, as covered by the signature.
+    fun requestPath(url: String): String {
+        val httpUrl = url.toHttpUrl()
+        return httpUrl.encodedPath + httpUrl.encodedQuery?.let { "?$it" }.orEmpty()
+    }
 
     fun buildCanonicalRequest(
         method: String,
@@ -18,7 +23,7 @@ object RequestSignature {
         timestamp: String,
         nonce: String,
         body: ByteArray,
-    ): String = listOf(VERSION, method.uppercase(), path, timestamp, nonce, HashUtils.sha256Hex(body)).joinToString("\n")
+    ): String = listOf(timestamp, nonce, method.uppercase(), path, HashUtils.sha256Hex(body)).joinToString("\n")
 
     fun sign(
         method: String,
@@ -27,7 +32,7 @@ object RequestSignature {
         nonce: String,
         body: ByteArray,
         key: String,
-    ): String = PREFIX + HashUtils.hmacSha256Hex(
+    ): String = HashUtils.hmacSha256Hex(
         buildCanonicalRequest(method, path, timestamp, nonce, body),
         key,
     )

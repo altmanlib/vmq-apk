@@ -6,7 +6,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
@@ -32,14 +31,14 @@ class PaymentPushService(
                     retry(RetryConfig(maxAttempts = 4, initialDelayMs = 1_000L)) {
                         val timestamp = (currentTimeMillis() / 1_000).toString()
                         val nonce = nonceFactory()
-                        val encodedBody = PaymentNotifyRequestBody(
-                            channel = paymentEvent.type.code,
-                            price = paymentEvent.amount,
+                        val encodedBody = PaymentReportRequestBody(
+                            channel = paymentEvent.type.channel,
+                            amount = paymentEvent.amountYuan,
                         ).encodeJsonRequestBody()
-                        val url = ApiUrlBuilder.buildAppPushUrl(config.host)
+                        val url = ApiUrlBuilder.buildPaymentReportUrl(config.host)
                         val headers = RequestSignature.buildHeaders(
                             method = "POST",
-                            path = url.toHttpUrl().encodedPath,
+                            path = RequestSignature.requestPath(url),
                             timestamp = timestamp,
                             nonce = nonce,
                             body = encodedBody.bytes,

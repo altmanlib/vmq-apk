@@ -17,9 +17,9 @@ private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 data object HeartbeatRequestBody
 
 @Serializable
-data class PaymentNotifyRequestBody(
-    val channel: Int,
-    val price: Double,
+data class PaymentReportRequestBody(
+    val channel: String,
+    val amount: String,
 )
 
 internal data class EncodedJsonRequestBody(val json: String) {

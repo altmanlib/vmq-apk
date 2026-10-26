@@ -2,12 +2,12 @@
 
 `cloudpay-apk` 是一个用于**自用收款通知监听**的 Android App。
 
-通过 `NotificationListenerService` 监听微信 / 支付宝收款通知，并将结果回调到你的自建服务端。
+通过 `NotificationListenerService` 监听微信 / 支付宝收款通知，并上报到 CloudPay 服务端。
 
-默认请求的服务端接口：
+请求的服务端接口（监控 API）：
 
-- `POST /api/v1/system/heartbeat`
-- `POST /api/v1/payments/notify`
+- `POST /api/monitor/heartbeat`
+- `POST /api/monitor/payments`
 
 ## 当前状态
 
@@ -89,19 +89,30 @@ https://example.com/api/your-key
 - 不带 `http(s)://` 时默认补 `http://`
 - 纯 `https://example.com`（不带 key）会被判定为非法配置
 - App 会把剩余主机部分作为服务端基础地址，并拼接：
-  - `/api/v1/system/heartbeat`
-  - `/api/v1/payments/notify`
+  - `/api/monitor/heartbeat`
+  - `/api/monitor/payments`
 - 请求方式：`POST` + `application/json`
+- 配置中的密钥是服务端的**监控密钥**
 
-### 回调请求认证 v1
+### 到账上报
 
-两个回调接口均使用 HTTPS，并以请求头认证，而不是在 JSON body 中传递 `t`、`sign`：
+```json
+{ "channel": "wechat", "amount": "1.00" }
+```
 
-- `X-VMQ-Timestamp`：10 位 Unix 秒时间戳。
-- `X-VMQ-Nonce`：每次 HTTP 尝试新建的小写 UUID v4。
-- `X-VMQ-Signature`：`v1=` 加 HMAC-SHA256 小写十六进制摘要。
+- `channel`：`wechat` 或 `alipay`
+- `amount`：元，固定两位小数的字符串
+- 心跳请求体为 `{}`
 
-签名覆盖以下六行 UTF-8 canonical request：协议版本 `VMQ-HMAC-SHA256-V1`、大写 HTTP 方法、URL path、timestamp、nonce，以及实际发送 JSON bytes 的 SHA-256 摘要。支付上报的每一次重试都会生成新的 timestamp、nonce 和签名。APK 与服务端必须配套升级到 v1。
+### 请求认证
+
+两个接口均以请求头认证，契约见 CloudPay 仓库 `docs/reference/hmac.md`：
+
+- `X-CloudPay-Timestamp`：Unix 秒时间戳。
+- `X-CloudPay-Nonce`：每次 HTTP 尝试新建的小写 UUID v4。
+- `X-CloudPay-Signature`：HMAC-SHA256 小写十六进制摘要。
+
+签名覆盖以下五行 UTF-8 规范串：timestamp、nonce、大写 HTTP 方法、URL path（含 query）、实际发送 JSON bytes 的 SHA-256 摘要。到账上报的每一次重试都会生成新的 timestamp、nonce 和签名。
 
 ## 核心限制
 

@@ -33,14 +33,14 @@ class HeartbeatServiceTest {
 
             assertTrue(result.isSuccess)
             assertEquals("OK", result.getOrNull())
-            assertEquals("/api/api/v1/system/heartbeat", request.path)
+            assertEquals("/api/api/monitor/heartbeat", request.path)
             assertEquals(body, request.body.readUtf8())
             assertEquals("$timestamp", request.getHeader(RequestSignature.TIMESTAMP_HEADER))
             assertEquals("123e4567-e89b-42d3-a456-426614174000", request.getHeader(RequestSignature.NONCE_HEADER))
             assertEquals(
                 RequestSignature.sign(
                     method = "POST",
-                    path = "/api/api/v1/system/heartbeat",
+                    path = "/api/api/monitor/heartbeat",
                     timestamp = timestamp.toString(),
                     nonce = "123e4567-e89b-42d3-a456-426614174000",
                     body = body.toByteArray(Charsets.UTF_8),

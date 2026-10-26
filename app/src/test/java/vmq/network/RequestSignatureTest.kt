@@ -9,40 +9,72 @@ import vmq.util.HashUtils
 class RequestSignatureTest {
     @Test
     fun `request signature matches cross language fixed vector`() {
-        val body = "{\"client\":\"android\"}".toByteArray(Charsets.UTF_8)
+        val body = "{\"channel\":\"alipay\",\"amount\":\"12.34\"}".toByteArray(Charsets.UTF_8)
         val canonicalRequest = """
-            VMQ-HMAC-SHA256-V1
-            POST
-            /api/v1/system/heartbeat
             1784194689
             123e4567-e89b-42d3-a456-426614174000
-            e7434a3be5536e150ea0df851036c6ca1c0eab09f6c62153409b9a83402c9f69
+            POST
+            /api/monitor/payments
+            1090d8540a48a68e900db69ccdf3f2a068b1e2ddc7242fd62d6e916b0411dffd
         """.trimIndent()
 
         assertEquals(
-            "e7434a3be5536e150ea0df851036c6ca1c0eab09f6c62153409b9a83402c9f69",
+            "1090d8540a48a68e900db69ccdf3f2a068b1e2ddc7242fd62d6e916b0411dffd",
             HashUtils.sha256Hex(body),
         )
         assertEquals(
             canonicalRequest,
             RequestSignature.buildCanonicalRequest(
-                method = "POST",
-                path = "/api/v1/system/heartbeat",
+                method = "post",
+                path = "/api/monitor/payments",
                 timestamp = "1784194689",
                 nonce = "123e4567-e89b-42d3-a456-426614174000",
                 body = body,
             ),
         )
         assertEquals(
-            "v1=7b6ba572f9c836e36bac9aaa30af001eb3053c5db2bd2b0128128a9c0cc4f247",
+            "587d2c827305b96256fb9243cb2f3a8d419f50d3c03f42156fec668065c39599",
             RequestSignature.sign(
                 method = "POST",
-                path = "/api/v1/system/heartbeat",
+                path = "/api/monitor/payments",
                 timestamp = "1784194689",
                 nonce = "123e4567-e89b-42d3-a456-426614174000",
                 body = body,
                 key = "test_secret_key_123",
             ),
+        )
+    }
+
+    @Test
+    fun `heartbeat signature matches cross language fixed vector`() {
+        val signature = RequestSignature.sign(
+            method = "POST",
+            path = "/api/monitor/heartbeat",
+            timestamp = "1784194689",
+            nonce = "123e4567-e89b-42d3-a456-426614174000",
+            body = "{}".toByteArray(Charsets.UTF_8),
+            key = "test_secret_key_123",
+        )
+
+        assertEquals("42e0275dac55496624d86169ffc6f1610d1c689f2911ae9e660a29369b6a0d8e", signature)
+    }
+
+    @Test
+    fun `header names use the CloudPay prefix`() {
+        assertEquals("X-CloudPay-Timestamp", RequestSignature.TIMESTAMP_HEADER)
+        assertEquals("X-CloudPay-Nonce", RequestSignature.NONCE_HEADER)
+        assertEquals("X-CloudPay-Signature", RequestSignature.SIGNATURE_HEADER)
+    }
+
+    @Test
+    fun `request path keeps pathname and query`() {
+        assertEquals(
+            "/api/monitor/payments?x=1",
+            RequestSignature.requestPath("https://example.com/api/monitor/payments?x=1"),
+        )
+        assertEquals(
+            "/api/monitor/heartbeat",
+            RequestSignature.requestPath("https://example.com/api/monitor/heartbeat"),
         )
     }
 

@@ -2,11 +2,11 @@ package vmq.network
 
 object ApiUrlBuilder {
     fun buildHeartBeatUrl(hostValue: String): String {
-        return build(hostValue, "api/v1/system/heartbeat")
+        return build(hostValue, "api/monitor/heartbeat")
     }
 
-    fun buildAppPushUrl(hostValue: String): String {
-        return build(hostValue, "api/v1/payments/notify")
+    fun buildPaymentReportUrl(hostValue: String): String {
+        return build(hostValue, "api/monitor/payments")
     }
 
     fun build(hostValue: String, pathAndQuery: String): String {

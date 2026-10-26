@@ -2,7 +2,7 @@
 
 ## 背景
 
-`POST /api/v1/payments/notify` 是 App 将支付通知推送到服务端的核心接口。当前实现为单次请求，失败后仅打日志，不做重试。对于支付回调这类关键业务请求，服务端短暂不可用（重启、网络抖动返回 5xx）会导致支付通知**永久丢失**。
+`POST /api/monitor/payments` 是 App 将到账事件上报到服务端的核心接口。当前实现为单次请求，失败后仅打日志，不做重试。对于支付回调这类关键业务请求，服务端短暂不可用（重启、网络抖动返回 5xx）会导致支付通知**永久丢失**。
 
 ## 现状分析
 
@@ -169,6 +169,7 @@ class PaymentPushService(
     okHttpClient: OkHttpClient = OkHttpClient(),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val currentTimeMillis: () -> Long = System::currentTimeMillis,
+    private val nonceFactory: () -> String = RequestSignature::newNonce,
 ) {
     // Per-request 5s timeout, derived from the shared client
     private val client: OkHttpClient = okHttpClient.newBuilder()
@@ -181,18 +182,25 @@ class PaymentPushService(
                 withTimeout(30_000L) {
                     retry(RetryConfig(maxAttempts = 4, initialDelayMs = 1_000L)) { attempt ->
                         val timestamp = (currentTimeMillis() / 1_000).toString()
-                        val channel = paymentEvent.type.code
-                        val sign = HashUtils.signGen("$channel${paymentEvent.amount}$timestamp", config.key)
-                        val requestBody = PaymentNotifyRequestBody(
-                            channel = channel,
-                            price = paymentEvent.amount,
-                            t = timestamp,
-                            sign = sign,
-                        ).toJsonRequestBody()
+                        val nonce = nonceFactory()
+                        val encodedBody = PaymentReportRequestBody(
+                            channel = paymentEvent.type.channel,
+                            amount = paymentEvent.amountYuan,
+                        ).encodeJsonRequestBody()
+                        val url = ApiUrlBuilder.buildPaymentReportUrl(config.host)
+                        val headers = RequestSignature.buildHeaders(
+                            method = "POST",
+                            path = RequestSignature.requestPath(url),
+                            timestamp = timestamp,
+                            nonce = nonce,
+                            body = encodedBody.bytes,
+                            key = config.key,
+                        )
 
                         val request = Request.Builder()
-                            .url(ApiUrlBuilder.buildAppPushUrl(config.host))
-                            .post(requestBody)
+                            .url(url)
+                            .post(encodedBody.toRequestBody())
+                            .apply { headers.forEach { (name, value) -> header(name, value) } }
                             .build()
 
                         try {

@@ -4,7 +4,6 @@ import vmq.data.AppConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 
 class HeartbeatService(
@@ -20,7 +19,7 @@ class HeartbeatService(
             val url = ApiUrlBuilder.buildHeartBeatUrl(config.host)
             val headers = RequestSignature.buildHeaders(
                 method = "POST",
-                path = url.toHttpUrl().encodedPath,
+                path = RequestSignature.requestPath(url),
                 timestamp = timestamp,
                 nonce = nonce,
                 body = encodedBody.bytes,

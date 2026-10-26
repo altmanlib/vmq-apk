@@ -1,6 +1,6 @@
 package vmq.model
 
-enum class PaymentType(val code: Int) {
-    WECHAT(1),
-    ALIPAY(2),
+enum class PaymentType(val channel: String) {
+    WECHAT("wechat"),
+    ALIPAY("alipay"),
 }
