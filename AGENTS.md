@@ -1,258 +1,51 @@
+# cloudpay-apk
 
-## 构建
+自用收款通知监听 Android App（Kotlin、Compose、ViewModel + UseCase + Repository）：用 `NotificationListenerService` 监听微信 / 支付宝收款通知，上报到 CloudPay 服务端。构建、测试命令与代码结构见 @README.md
 
-### 使用 Gradle
+## 开工流程
 
-```bash
-./gradlew assembleDebug
-./gradlew assembleRelease
-```
+- 动手前先在仓根检查远程有没有新提交（`git fetch` 后 `git status -sb` 看是否 `behind`），有则先 `git pull --ff-only`；无法快进时停下来告知用户，不擅自 merge / rebase。同一会话内已拉取过的，不必重复拉取
+- 先读 @ROADMAP.md；有「待决策」且阻塞当前任务时先向用户确认
+- 协议以 CloudPay 仓库的监控 API 与 HMAC 契约为准（`../cloudpay/docs/reference/monitor-api.md`、`../cloudpay/docs/reference/hmac.md`）；重试见 @docs/design/payment-retry-mechanism.md；改对外契约时两仓同步
+- 能直接解决的小问题顺手处理，不登记成任务
 
-### 使用 Makefile
+## 项目目标
 
-```bash
-make build
-make build-release
-make version
-make bump VERSION=1.2.3
-make tag VERSION=1.2.3
-make release
-make release VERSION=1.2.3
-```
+- 交付通知到回调的闭环：监听权限、通知分类与金额解析、心跳、到账上报、失败重试
+- 方案基于通知文案解析，受限于文案变化、厂商后台限制与系统版本；边界以 `ROADMAP.md`「暂缓」为准
 
-### 推荐发版命令
+## 开发约定
 
-```bash
-bash scripts/release.sh 1.2.3
-bash scripts/release.sh
-```
-
-### 发布新版本
-
-只更新版本号：
-
-```bash
-make bump VERSION=1.2.3
-```
-
-按指定版本发版、提交、打标、推送并触发 workflow：
-
-```bash
-bash scripts/release.sh 1.2.3
-```
-
-不传版本号时，默认自动递增版本号并发版（默认递增 patch，且会自动跳过已存在的 tag）：
-
-```bash
-bash scripts/release.sh
-```
-
-仅预览完整发版动作：
-
-```bash
-bash scripts/release.sh --dry-run
-```
-
-跳过单元测试：
-
-```bash
-bash scripts/release.sh --skip-tests
-```
-
-仅打 Git 标记：
-
-```bash
-make tag VERSION=1.2.3
-```
-
-`make release` 仍可使用，但只是 `bash scripts/release.sh` 的包装：
-
-```bash
-make release
-make release VERSION=1.2.3
-```
-
-
-## 测试规范
-
-### 测试目标
-
-- 默认优先编写 **单元测试**，保证核心业务逻辑可回归、可快速执行。
-- 新功能、Bug 修复、重构后的行为变化，必须同步补充或更新测试。
-- 当前项目以 `app/src/test/java` 下的 **本地单元测试** 为主；仅当必须依赖 Android 真机 / 模拟器能力时，才新增 `app/src/androidTest/java` 下的仪器测试。
-
-### 测试目录约定
-
-- 单元测试：`app/src/test/java/...`
-- 仪器测试：`app/src/androidTest/java/...`
-- 测试文件名统一使用：`<被测类名>Test.kt`
-- 测试辅助类命名统一使用：`*Rule.kt`、`*Fake.kt`、`*Stub.kt`
-
-### 测试命名规范
-
-- 测试方法名必须直接描述行为，推荐使用 Kotlin 反引号命名：
-
-```kotlin
-@Test
-fun `startHeartbeat emits warning when config is missing`() = runTest {
-}
-```
-
-- 命名应明确体现：**前置条件 + 行为 + 预期结果**。
-- 禁止使用 `test1`、`works`、`successCase` 这类含义不清的名称。
-
-### 测试结构规范
-
-- 每个测试只验证一个明确行为。
-- 推荐使用 **Arrange / Act / Assert** 结构，三个阶段之间保留空行。
-- 断言必须验证可观察结果，不要只测试“代码执行不报错”。
-- 新增测试时，优先覆盖：
-  - 成功路径
-  - 失败路径
-  - 边界输入
-  - 状态变化
-  - 副作用（如保存配置、发起心跳、发送 effect）
-
-### ViewModel 测试规范
-
-- `ViewModel` 测试必须覆盖：
-  - `uiState` 是否按预期更新
-  - `effects` 是否按预期发出
-  - 与 Repository 的交互是否发生
-  - 缺失配置、非法输入、请求失败等异常路径
-- 涉及协程的 `ViewModel` 测试，统一使用 `runTest`。
-- 涉及 `Dispatchers.Main` 的测试，统一复用 `MainDispatcherRule`。
-- 对异步状态流转，使用 `advanceUntilIdle()` 等待任务完成后再断言。
-
-### Repository / 数据层测试规范
-
-- 纯解析、映射、拼装逻辑必须优先写成可单测的纯函数或小型类。
-- Repository 测试应关注：
-  - 输入到输出的转换结果
-  - 成功 / 失败结果封装
-  - 关键参数是否正确传递
-- 如果某段逻辑难以测试，优先重构为可注入依赖，而不是放弃测试。
-
-### Fake / Stub / Mock 原则
-
-- 当前项目测试优先使用 **Fake / Stub**，与现有 `FakeConfigRepository` 风格保持一致。
-- 在没有明确必要前，不引入额外 mocking 框架。
-- Fake 类应只实现测试真正需要的最小行为，并暴露必要的调用记录字段用于断言。
-
-### 协程与 Flow 测试规范
-
-- 协程测试统一使用：`kotlinx-coroutines-test`
-- 推荐模式：
-
-```kotlin
-@Test
-fun `example`() = runTest {
-    // Arrange
-
-    // Act
-    advanceUntilIdle()
-
-    // Assert
-}
-```
-
-- 对 `Flow` / `StateFlow`：
-  - 优先断言最终状态
-  - 需要验证单次事件时，可使用 `first()` 获取首个结果
-  - 必须避免依赖真实时间等待，如 `Thread.sleep`
-
-### 必测场景清单
-
-提交前至少检查是否覆盖以下场景：
-
-- 配置存在 / 配置缺失
-- 输入合法 / 输入非法
-- 服务端成功 / 服务端失败
-- 状态更新是否正确
-- Toast / Effect 是否正确发出
-- Repository 保存 / 调用是否发生
-
-### 变更准入规则
-
-- **新功能**：必须附带对应测试。
-- **Bug 修复**：必须先补一个可复现该 Bug 的测试，再修复代码。
-- **重构**：不得降低已有测试覆盖范围；如行为变化，必须同步更新测试。
-- 未附测试的逻辑改动，默认视为不完整，除非该改动确实无法以自动化方式验证，并在提交说明中明确理由。
-
-### 执行命令
-
-日常执行单元测试：
-
-```bash
-./gradlew testDebugUnitTest
-```
-
-编译 Android UI 测试 APK：
-
-```bash
-./gradlew assembleDebugAndroidTest
-```
-
-在已连接设备 / 模拟器上执行仪器测试：
-
-```bash
-./gradlew connectedDebugAndroidTest
-```
-
-推荐本地验证顺序：
-
-```bash
-./gradlew testDebugUnitTest
-./gradlew assembleDebugAndroidTest
-./gradlew assembleDebug
-```
-
-执行全部测试与构建时，可使用：
-
-```bash
-./gradlew testDebugUnitTest
-./gradlew assembleRelease
-```
-
-仅在需要 Android 设备能力时，才执行仪器测试。
-
-### CI 约定
-
-- 仓库 CI 至少应执行：
-  - `./gradlew testDebugUnitTest`
-  - `./gradlew assembleDebugAndroidTest`
-- PR 合并前，默认应保证以上命令可通过。
-
-### 编写测试时的额外要求
-
-- 测试代码本身也应保持可读性，避免过度复用隐藏意图。
-- 一个测试文件只聚焦一个被测类。
-- 测试中的注释如有需要，必须使用 **English only**。
-- 非必要不要测试 UI 框架实现细节，优先测试业务行为与状态。
-- 对外部依赖（网络、系统服务、通知、扫码结果等），必须通过抽象和替身隔离，不要在单元测试中访问真实环境。
+- 长期主义优先，不留技术债；债务当场还或登记进 `ROADMAP.md` 并写触发条件
+- 提交前依次通过 `./gradlew testDebugUnitTest`、`./gradlew assembleDebugAndroidTest`、`./gradlew assembleDebug`；仅当逻辑依赖真机能力时才新增 `androidTest`，并用 `connectedDebugAndroidTest` 执行
+- 新功能随附测试；Bug 修复先补能复现的测试，再改代码；重构不降低覆盖
+- 测试放 `app/src/test/java`，文件名 `<被测类名>Test.kt`，方法名用反引号直述「前置条件 + 行为 + 预期」；结构 Arrange / Act / Assert，三段空行分隔
+- 测试替身用 `*Fake.kt` / `*Stub.kt`，只实现测试需要的最小行为，不引入 mocking 框架
+- 协程测试用 `runTest` 与 `advanceUntilIdle()`；涉及 `Dispatchers.Main` 复用 `MainDispatcherRule`；时间用虚拟时间，不用 `Thread.sleep`
+- ViewModel 测试覆盖 `uiState`、`effects`、Repository 交互与缺失配置 / 非法输入 / 请求失败路径
+- 纯解析、映射、拼装逻辑写成可单测的纯函数；难测的逻辑重构为可注入依赖
+- 测试代码注释只用英文
 
 ## 通知误报排查
 
-出现支付宝或微信收款通知误报时，在用户已连接并授权调试设备的前提下，优先使用 ADB 获取真实通知文本，再调整解析规则。通知内容可能包含隐私信息，仅用于当前问题排查，避免在日志、提交信息或回复中泄露无关内容。
+支付宝或微信收款通知误报时，在用户已连接并授权调试设备的前提下，先用 ADB 取真实通知文本，再调整解析规则：
 
 ```bash
 adb devices -l
-adb shell dumpsys notification --noredact | rg -n -i -C 6 'com\\.eg\\.android\\.AlipayGphone|com\\.tencent\\.mm|支付宝|微信'
+adb shell dumpsys notification --noredact | rg -n -i -C 6 'com\.eg\.android\.AlipayGphone|com\.tencent\.mm|支付宝|微信'
 adb logcat -d -v brief -s NeNotificationService:D '*:S'
 ```
 
-排查步骤：
+1. 从 dumpsys 记录包名、`android.title`、`android.text`；已清除的通知不保证可取
+2. 对照 `NeNotificationService` 日志，确认监听服务是否收到通知、实际解析与回调的金额
+3. 把脱敏后的真实标题与正文作为单元测试用例，先复现误报，再修复
+4. 金额由收款语义锚定提取，不从拼接全文取最后一个数字；营销额度、保障金额、积分不得影响收款金额
+5. 通知含隐私，仅用于当前排查，日志、提交信息与回复里不带无关内容
 
-1. 从 `dumpsys notification --noredact` 记录通知的包名、`android.title` 和 `android.text`；当前活跃通知通常可完整读取，已清除的通知不保证可获取。
-2. 对照 `NeNotificationService` 日志，确认监听服务是否收到该通知，以及实际解析和回调的金额。
-3. 将已脱敏的真实标题与正文作为单元测试用例，先复现误报，再修复解析逻辑。
-4. 金额必须由收款语义锚定提取，不能从拼接后的完整通知文本中取最后一个数字；营销额度、保障金额、积分等数字不得影响收款金额。
+## Git 工作流
 
-## App 使用流程
-
-1. 安装并启动 App
-2. 打开“通知访问权限”
-3. 通过**扫码配置**或**手动配置**填写服务端地址和密钥
-4. 点击“检测心跳”验证服务端连通性（请求 `POST /api/v1/system/heartbeat`，JSON body）
-5. 点击“检测监听”验证通知监听权限
-6. 用微信 / 支付宝做一笔小额收款测试（支付通知回调到 `POST /api/v1/payments/notify`，JSON body，字段使用 `channel`）
+- 开发分支：`dev`；agent 改动只在该分支
+- 在 `dev` 上完成功能后可自行提交；`type: summary`（`feat` / `fix` / `docs` / `chore` / `style` / `refactor` / `test`），对应 roadmap 时末尾附编号
+- 在 `dev` 上可自行 `git push`；合并到其他分支须用户明确要求
+- 合并 `main`：须用户明确要求；推送前上述三条 Gradle 命令通过
+- 发版：须用户明确要求，只从 `main` 执行 `bash scripts/release.sh [x.y.z]`（提交版本号、打 tag、推送并触发 Release workflow）；先用 `--dry-run` 预览，缺省版本号自动递增 patch
